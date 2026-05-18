@@ -1,0 +1,48 @@
+server:
+  port: ${SERVER_PORT:8080}
+
+spring:
+  application:
+    name: apiforge-server
+
+  datasource:
+    # We wrap the postgresql driver inside p6spy. The p6spy starter handles this wrapping automatically, 
+    # but we can configure standard properties. If P6Spy is enabled, it automatically decorates the datasource.
+    url: jdbc:postgresql://${DB_HOST:localhost}:${DB_PORT:5432}/${DB_NAME:apiforge}
+    username: ${DB_USERNAME:postgres}
+    password: ${DB_PASSWORD:postgres}
+    driver-class-name: org.postgresql.Driver
+
+  jpa:
+    database-platform: org.hibernate.dialect.PostgreSQLDialect
+    hibernate:
+      ddl-auto: validate
+    properties:
+      hibernate:
+        format_sql: true
+        use_sql_comments: true
+    # Keep standard hibernate sql logging disabled because p6spy will log formatted sql queries
+    show-sql: false
+
+  flyway:
+    enabled: true
+    baseline-on-migrate: true
+    locations: classpath:db/migration
+
+# Expose Spring Actuator endpoints (health is exposed strictly)
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health
+  endpoint:
+    health:
+      show-details: when_authorized
+
+# P6Spy Spring Boot Starter Configuration
+decorator:
+  datasource:
+    p6spy:
+      enable-logging: true
+      multiline: true
+      logging: sysout
