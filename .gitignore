@@ -77,3 +77,7 @@ Desktop.ini
 .env
 .env.local
 .env.*.local
+
+# jqwik test artifacts
+.jqwik-database
+
