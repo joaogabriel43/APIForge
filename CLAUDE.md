@@ -141,6 +141,12 @@ com.apiforge/
 * **Decisão**: Utilizar `@RestControllerAdvice` criando o `GlobalExceptionHandler` interceptando todas as falhas de API (DTOs, parâmetros GET, parsing SQL e Runtime fallbacks) e serializando as respostas estritamente sob o padrão internacional RFC 7807 (Problem Details).
 * **Consequências**: Respostas de erro consistentes, fáceis de interpretar no frontend, totalmente sanitizadas contra vazamentos de logs de compiladores ou credenciais, com controle absoluto de HTTP Status por tipagem de erro.
 
+### ADR 012: Arquitetura AI Enhancement Layer e Silent Fallback (Sprint 04)
+* **Status**: Aprovado
+* **Contexto**: Enriquecer a geração com sugestões do LLM traz grande valor visual e semântico (Javadocs e nomes de domínio coerentes). Contudo, dependências externas e latências de APIs como a da OpenAI apresentam alta volatilidade (timeouts, indisponibilidade ou rate limit) que jamais podem comprometer o fluxo básico de geração principal de código-fonte das APIs (ZIP/SSE).
+* **Decisão**: Desenvolver um gateway altamente protegido com politicas de resiliência robustas do Resilience4j (Retry e Circuit Breaker de 10 falhas/10s de restabelecimento). Adotar a política de **Silent Fallback** estrita: quaisquer exceções ou indisponibilidades no canal LLM são capturadas silenciosamente na camada de aplicação retornando um `EnrichedSchema` neutro (un-enriched) com listas/mapas vazios, garantindo que o fluxo principal continue operando ininterruptamente sem nenhum impacto ao usuário final.
+* **Consequências**: Resiliência extrema do gerador de código, garantindo downloads ZIP e previews reativos instantâneos em 100% das requisições mesmo se a API da OpenAI estiver completamente indisponível.
+
 ---
 
 ## 🐛 Erros Conhecidos
