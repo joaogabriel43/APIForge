@@ -1,0 +1,40 @@
+databases:
+  - name: apiforge-db
+    databaseName: apiforge
+    user: postgres
+    plan: free
+
+services:
+  - type: web
+    name: apiforge-backend
+    env: docker
+    dockerfilePath: Dockerfile
+    plan: free
+    healthCheckPath: /actuator/health
+    envVars:
+      - key: SERVER_PORT
+        value: 8080
+      - key: DB_HOST
+        fromDatabase:
+          name: apiforge-db
+          property: host
+      - key: DB_PORT
+        fromDatabase:
+          name: apiforge-db
+          property: port
+      - key: DB_NAME
+        fromDatabase:
+          name: apiforge-db
+          property: database
+      - key: DB_USERNAME
+        fromDatabase:
+          name: apiforge-db
+          property: user
+      - key: DB_PASSWORD
+        fromDatabase:
+          name: apiforge-db
+          property: password
+      - key: OPENAI_API_KEY
+        sync: false
+      - key: OPENAI_API_URL
+        value: https://api.openai.com/v1/chat/completions
