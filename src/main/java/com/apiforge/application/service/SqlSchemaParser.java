@@ -17,6 +17,8 @@ import net.sf.jsqlparser.statement.create.table.ForeignKeyIndex;
 import java.util.ArrayList;
 import java.util.List;
 
+import org.springframework.stereotype.Component;
+
 /**
  * Application service responsible for parsing SQL DDL statements and 
  * converting them into domain schema definitions.
@@ -26,10 +28,11 @@ import java.util.List;
  * pure and framework-free.
  * </p>
  */
-public final class SqlSchemaParser {
+@Component
+public class SqlSchemaParser {
 
-    private SqlSchemaParser() {
-        // Prevent instantiation
+    public SqlSchemaParser() {
+        // Public constructor for Spring bean injection
     }
 
     /**
