@@ -1,5 +1,27 @@
 <div class="min-h-screen bg-slate-950 text-slate-100 flex flex-col font-sans selection:bg-cyan-500/30">
   
+  <!-- Elegant Toast Alert Notification -->
+  @if (showErrorToast) {
+    <div class="fixed top-5 left-1/2 -translate-x-1/2 z-[100] max-w-md w-full px-4 animate-bounce">
+      <div class="bg-slate-900 border-2 border-rose-500/80 p-4 rounded-2xl flex items-start space-x-3 shadow-2xl backdrop-blur-md">
+        <div class="h-8 w-8 rounded-lg bg-rose-500/20 border border-rose-500 flex items-center justify-center text-rose-400 shrink-0">
+          <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+          </svg>
+        </div>
+        <div class="flex-1 min-w-0">
+          <h4 class="text-xs font-bold text-rose-400 uppercase tracking-wide">Generation Pipeline Failed</h4>
+          <p class="text-xs text-slate-300 mt-1 leading-relaxed">{{ errorMessage }}</p>
+        </div>
+        <button type="button" (click)="showErrorToast = false" class="text-slate-500 hover:text-slate-350 transition shrink-0">
+          <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+          </svg>
+        </button>
+      </div>
+    </div>
+  }
+
   <!-- Glowing header -->
   <header class="border-b border-slate-800 bg-slate-900/60 backdrop-blur-md sticky top-0 z-50">
     <div class="max-w-7-xl mx-auto px-6 py-4 flex items-center justify-between">
@@ -142,7 +164,11 @@
           </button>
 
           <button type="button" (click)="downloadZip()" [disabled]="isGenerating || generatorForm.invalid"
-                  class="bg-gradient-to-r from-cyan-500 to-indigo-600 text-white font-medium py-3 px-4 rounded-xl text-sm flex items-center justify-center space-x-2 transition shadow-lg shadow-cyan-500/10 hover:shadow-cyan-500/20 hover:brightness-110 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed select-none">
+                  [ngClass]="{
+                    'ring-4 ring-cyan-500/40 border-cyan-300 animate-pulse scale-105 shadow-cyan-500/35': isDownloadHighlighted,
+                    'shadow-cyan-500/10 hover:shadow-cyan-500/20 active:scale-95': !isDownloadHighlighted
+                  }"
+                  class="bg-gradient-to-r from-cyan-500 to-indigo-600 text-white font-medium py-3 px-4 rounded-xl text-sm flex items-center justify-center space-x-2 transition shadow-lg hover:brightness-110 disabled:opacity-50 disabled:cursor-not-allowed select-none">
             @if (isGenerating) {
               <svg class="animate-spin h-4 w-4 text-white" fill="none" viewBox="0 0 24 24">
                 <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
@@ -199,40 +225,70 @@
         <!-- Tab Explorers Header -->
         <div class="border-b border-slate-800 pb-3 flex items-center justify-between mb-4">
           <div class="flex items-center space-x-2">
-            <span class="h-2 w-2 rounded-full bg-emerald-500"></span>
+            <span class="h-2 w-2 rounded-full" [ngClass]="isGenerating ? 'bg-cyan-500 animate-pulse' : 'bg-emerald-500'"></span>
             <h2 class="text-sm font-semibold tracking-wide uppercase text-slate-300">Generated Project Files</h2>
           </div>
-          <span class="text-xs text-slate-500 font-mono">{{ files.length }} Files Available</span>
+          
+          <div class="flex items-center space-x-3">
+            <!-- Dynamic Telemetry Counter / Progress Messages -->
+            @if (isGenerating && currentProgressMessage) {
+              <span class="text-xs text-cyan-400 font-mono animate-pulse flex items-center space-x-1.5">
+                <svg class="animate-spin h-3.5 w-3.5" fill="none" viewBox="0 0 24 24">
+                  <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                  <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                </svg>
+                <span>{{ currentProgressMessage }}</span>
+              </span>
+            }
+            
+            @if (filesCountMessage) {
+              <span class="text-xs bg-emerald-950 text-emerald-400 border border-emerald-800/60 px-2.5 py-1 rounded-full font-bold uppercase tracking-wider animate-bounce">
+                {{ filesCountMessage }}
+              </span>
+            }
+            
+            <span class="text-xs text-slate-500 font-mono">{{ files.length }} Files Available</span>
+          </div>
         </div>
 
         <!-- Render when files exist -->
         @if (files.length > 0) {
-          <div class="flex-1 flex flex-col space-y-4">
+          <div class="flex-1 flex flex-col md:flex-row gap-4 h-[600px] min-h-[500px]">
             
-            <!-- File Explorer Horizontal Tabs -->
-            <div class="flex items-center space-x-2 overflow-x-auto pb-2 scrollbar-thin scrollbar-thumb-slate-800 scrollbar-track-transparent">
-              @for (file of files; track file.name) {
-                <button type="button" (click)="selectFile(file)"
-                        [ngClass]="{
-                          'border-cyan-500 bg-slate-800/80 text-cyan-400': isFileSelected(file),
-                          'border-transparent text-slate-400 hover:text-slate-200 hover:bg-slate-800/40': !isFileSelected(file)
-                        }"
-                        class="border-b-2 px-3 py-2 text-xs font-mono rounded-t-lg bg-slate-950/40 transition shrink-0 flex items-center space-x-1.5 select-none font-bold">
-                  <svg class="h-3.5 w-3.5 text-cyan-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
-                  </svg>
-                  <span>{{ getFileName(file.name) }}</span>
-                </button>
-              }
+            <!-- File Tree Sidebar -->
+            <div class="w-full md:w-64 bg-slate-950/60 border border-slate-800/80 rounded-xl p-3 flex flex-col space-y-2 overflow-y-auto max-h-[600px] scrollbar-thin scrollbar-thumb-slate-800 scrollbar-track-transparent">
+              <div class="text-[10px] text-slate-500 font-bold px-2 py-1.5 uppercase tracking-wider border-b border-slate-900 pb-2 flex items-center justify-between select-none font-mono">
+                <span>Workspace Directory</span>
+                <span class="text-[9px] bg-slate-900 border border-slate-800 px-1.5 py-0.5 rounded text-cyan-400">SRC</span>
+              </div>
+              <div class="flex flex-col space-y-1 pt-1.5">
+                @for (file of files; track file.name) {
+                  <button type="button" (click)="selectFile(file)"
+                          [ngClass]="{
+                            'bg-cyan-500/10 border-l-2 border-cyan-500 text-cyan-300 font-bold': isFileSelected(file),
+                            'border-l-2 border-transparent text-slate-400 hover:bg-slate-800/40 hover:text-slate-200': !isFileSelected(file)
+                          }"
+                          class="w-full text-left px-3 py-2.5 rounded-r-lg text-xs font-mono transition flex items-center space-x-2 select-none truncate hover:pl-4 transition-all duration-200">
+                    <svg class="h-3.5 w-3.5 shrink-0" [ngClass]="isFileSelected(file) ? 'text-cyan-400' : 'text-slate-500'" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
+                    </svg>
+                    <span class="truncate" [title]="file.name">{{ file.name }}</span>
+                  </button>
+                }
+              </div>
             </div>
 
-            <!-- Code Preview Workspace -->
-            <div class="flex-1 rounded-xl border border-slate-800 overflow-hidden bg-slate-950/60 flex flex-col relative group">
+            <!-- Code Viewer -->
+            <div class="flex-1 rounded-xl border border-slate-800 overflow-hidden bg-slate-950/60 flex flex-col relative group h-full">
               
               <!-- File info header -->
-              <div class="bg-slate-950/80 border-b border-slate-850 px-4 py-2 flex items-center justify-between text-xs text-slate-500 font-mono">
-                <span>{{ selectedFile ? selectedFile.name : '' }}</span>
-                <span class="text-cyan-500">Read-Only View</span>
+              <div class="bg-slate-950/80 border-b border-slate-850 px-4 py-2.5 flex items-center justify-between text-xs text-slate-500 font-mono">
+                <span class="truncate pr-4" [title]="selectedFile ? selectedFile.name : ''">
+                  {{ selectedFile ? selectedFile.name : 'No file selected' }}
+                </span>
+                <span class="text-[10px] bg-slate-900 border border-slate-800 px-2.5 py-1 rounded text-cyan-500 font-bold uppercase tracking-wider shrink-0 select-none">
+                  {{ getLanguageLabel() }}
+                </span>
               </div>
 
               <!-- Preview Monaco Component -->
@@ -243,14 +299,15 @@
 
           </div>
         } @else {
+          <!-- Empty Placeholder -->
           <div class="flex-1 flex flex-col items-center justify-center text-center p-8">
             <div class="h-16 w-16 rounded-2xl bg-slate-900/60 border border-slate-800 flex items-center justify-center text-slate-600 mb-4 animate-pulse">
-              <svg class="h-8 w-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <svg class="h-8 w-8 text-cyan-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 9l3 3-3 3m5 0h3M5 20h14a2 2 0 002-2V6a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
               </svg>
             </div>
-            <h3 class="text-slate-300 font-semibold mb-1">Source Code Output</h3>
-            <p class="text-xs text-slate-500 max-w-sm">No files compiled yet. Configure your schema and options on the left, then click <strong>Live Preview</strong> to see the generator compile in real-time.</p>
+            <h3 class="text-slate-300 font-semibold mb-1">Paste your SQL schema and click Preview</h3>
+            <p class="text-xs text-slate-500 max-w-sm">Configure your schema and options on the left, then click <strong>Live Preview</strong> to see the generator compile in real-time.</p>
           </div>
         }
 
@@ -278,4 +335,5 @@
   </footer>
 
 </div>
+
 

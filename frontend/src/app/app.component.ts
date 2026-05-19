@@ -1,4 +1,4 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, OnInit, OnDestroy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ReactiveFormsModule, FormBuilder, FormGroup, Validators, FormsModule } from '@angular/forms';
 import { MonacoEditorModule } from 'ngx-monaco-editor-v2';
@@ -19,7 +19,7 @@ interface GeneratedFile {
   templateUrl: './app.component.html',
   styleUrl: './app.component.css'
 })
-export class AppComponent implements OnInit {
+export class AppComponent implements OnInit, OnDestroy {
   title = 'APIForge Code Playground';
   generatorForm!: FormGroup;
 
@@ -46,6 +46,18 @@ CREATE TABLE posts (
   files: GeneratedFile[] = [];
   selectedFile: GeneratedFile | null = null;
   selectedFileContent = '';
+  
+  // Real-time progress and telemetry
+  currentProgressMessage = '';
+  filesCountMessage = '';
+  
+  // Error Toast Notifications
+  showErrorToast = false;
+  errorMessage = '';
+  
+  // Dynamic glow states
+  isDownloadHighlighted = false;
+  
   private previewSubs: Subscription[] = [];
 
   // Monaco Editor Options
@@ -78,6 +90,15 @@ CREATE TABLE posts (
     this.initForm();
   }
 
+  ngOnDestroy(): void {
+    // Clear preview subscriptions to prevent memory leaks
+    this.previewSubs.forEach(s => s.unsubscribe());
+    this.previewSubs = [];
+    
+    // Disconnect active EventSource stream connections
+    this.sseGenerationService.disconnect();
+  }
+
   private initForm(): void {
     this.generatorForm = this.fb.group({
       sql: [this.initialSql, Validators.required],
@@ -90,11 +111,42 @@ CREATE TABLE posts (
       generateSoftDelete: [false],
       enrichWithLlm: [false]
     });
+
+    // Reset download recommendation glow as soon as option form values alter
+    this.generatorForm.valueChanges.subscribe(() => {
+      this.isDownloadHighlighted = false;
+    });
   }
 
   // Reactive validation convenience helper getter
   get f() {
     return this.generatorForm.controls;
+  }
+
+  // Dynamic extension language mapper
+  getLanguageFromExtension(path: string): string {
+    if (!path) return 'text';
+    const ext = path.substring(path.lastIndexOf('.')).toLowerCase();
+    switch (ext) {
+      case '.java': return 'java';
+      case '.xml': return 'xml';
+      case '.sql': return 'sql';
+      case '.yml':
+      case '.yaml': return 'yaml';
+      case '.properties': return 'properties';
+      case '.md': return 'markdown';
+      default: return 'text';
+    }
+  }
+
+  // Error Dispatcher helper
+  showError(message: string): void {
+    this.generationError = message;
+    this.errorMessage = message;
+    this.showErrorToast = true;
+    setTimeout(() => {
+      this.showErrorToast = false;
+    }, 6000);
   }
 
   // Run live SSE preview generation
@@ -107,8 +159,12 @@ CREATE TABLE posts (
     this.previewSubs.forEach(s => s.unsubscribe());
     this.previewSubs = [];
 
+    // Clear old state completely for subsequent generation pipelines
     this.isGenerating = true;
     this.generationError = '';
+    this.currentProgressMessage = 'Initiating real-time generation preview...';
+    this.filesCountMessage = '';
+    this.isDownloadHighlighted = false;
     this.logs = ['Initiating real-time preview pipeline...'];
     this.files = [];
     this.selectedFile = null;
@@ -119,6 +175,7 @@ CREATE TABLE posts (
     // Subscriptions setup
     const progressSub = this.sseGenerationService.progress$.subscribe(data => {
       this.logs.push(`[Parser] ${data.message}`);
+      this.currentProgressMessage = data.message;
     });
 
     const fileSub = this.sseGenerationService.file$.subscribe(data => {
@@ -141,14 +198,25 @@ CREATE TABLE posts (
 
     const completeSub = this.sseGenerationService.complete$.subscribe(data => {
       this.logs.push(`[Success] ${data.message} (${data.fileCount} files created)`);
+      this.filesCountMessage = `${data.fileCount} files generated`;
+      this.currentProgressMessage = '';
       this.isGenerating = false;
+      this.isDownloadHighlighted = true;
+      
+      // Auto-select the first compiled file for immediate visualization
+      if (this.files.length > 0) {
+        this.selectFile(this.files[0]);
+      }
+      
       this.previewSubs.forEach(s => s.unsubscribe());
     });
 
     const errorSub = this.sseGenerationService.error$.subscribe(data => {
       this.logs.push(`[Error] ${data.message}`);
-      this.generationError = data.message;
+      this.showError(data.message);
+      this.currentProgressMessage = '';
       this.isGenerating = false;
+      this.sseGenerationService.disconnect();
       this.previewSubs.forEach(s => s.unsubscribe());
     });
 
@@ -174,10 +242,11 @@ CREATE TABLE posts (
       next: () => {
         this.logs.push('[Success] Download initiated.');
         this.isGenerating = false;
+        this.isDownloadHighlighted = false; // Turn off glow as download finishes
       },
       error: (err) => {
         console.error(err);
-        this.generationError = 'Failed to generate ZIP project. Check backend logs.';
+        this.showError('Failed to generate ZIP project. Check backend logs.');
         this.logs.push('[Error] Packaging failed.');
         this.isGenerating = false;
       }
@@ -187,6 +256,19 @@ CREATE TABLE posts (
   selectFile(file: GeneratedFile): void {
     this.selectedFile = file;
     this.selectedFileContent = file.content;
+    
+    // Toggle code viewer language dynamically based on extension
+    const lang = this.getLanguageFromExtension(file.name);
+    this.javaEditorOptions = {
+      ...this.javaEditorOptions,
+      language: lang
+    };
+  }
+
+  getLanguageLabel(): string {
+    if (!this.selectedFile) return 'TEXT';
+    const lang = this.getLanguageFromExtension(this.selectedFile.name);
+    return lang.toUpperCase();
   }
 
   getFileName(path: string): string {
