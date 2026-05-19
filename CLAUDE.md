@@ -123,6 +123,24 @@ com.apiforge/
 * **Decisão**: Criar o `ZipGeneratorService` na infraestrutura utilizando a API nativa `java.util.zip.ZipOutputStream`, forçando normalização absoluta de barras (`/`) e stripping de caminhos iniciais.
 * **Consequências**: Compactação rápida em memória livre de falhas de corrupção ou caminhos de SO incorretos, totalmente preparada para futuras exposições REST ou CLI.
 
+### ADR 009: Adoção de SseEmitter em Thread-Pool Separada para Previews Real-time
+* **Status**: Aprovado
+* **Contexto**: O preview de código gerado em tempo real melhora drasticamente a experiência do usuário. Contudo, renderizar dezenas de arquivos de template sequencialmente com atrasos artificiais na thread HTTP do Tomcat causaria esgotamento rápido da thread pool do servlet.
+* **Decisão**: Utilizar `SseEmitter` e desacoplar o processamento da thread original do Tomcat despachando a tarefa assíncrona por meio de `CompletableFuture.runAsync`.
+* **Consequências**: Liberação imediata da thread servlet original para atender outras requisições HTTP, mantendo o servidor escalável sob alto volume de acessos paralelos e garantindo estabilidade no streaming de eventos em tempo real.
+
+### ADR 010: Fire-and-Forget Seguro com @Async para Auditoria de Geração
+* **Status**: Aprovado
+* **Contexto**: A gravação de logs de auditoria no PostgreSQL é obrigatória a cada geração concluída. Contudo, oscilações ou falhas de persistência no banco de dados (banco offline, timeouts) jamais podem inviabilizar o download do arquivo ZIP de código gerado pelo cliente final.
+* **Decisão**: Habilitar execução assíncrona no contexto com `@EnableAsync` e anotar o método de gravação de auditoria com `@Async`, isolando totalmente sua execução em um bloco `try-catch` robusto.
+* **Consequências**: Persistência de logs totalmente transparente ao fluxo síncrono de geração de código (fire-and-forget), assegurando o download imediato dos arquivos ZIP mesmo diante de oscilações ou quedas totais da camada de persistência.
+
+### ADR 011: Centralização e Padronização de Exceções com RFC 7807 (Problem Details)
+* **Status**: Aprovado
+* **Contexto**: Expor stack traces complexos ou mensagens técnicas brutas em requisições de erro (como falhas de parsing ou validações de payloads) é um risco grave de segurança (leaking de infraestrutura) e degrada a integração com o frontend.
+* **Decisão**: Utilizar `@RestControllerAdvice` criando o `GlobalExceptionHandler` interceptando todas as falhas de API (DTOs, parâmetros GET, parsing SQL e Runtime fallbacks) e serializando as respostas estritamente sob o padrão internacional RFC 7807 (Problem Details).
+* **Consequências**: Respostas de erro consistentes, fáceis de interpretar no frontend, totalmente sanitizadas contra vazamentos de logs de compiladores ou credenciais, com controle absoluto de HTTP Status por tipagem de erro.
+
 ---
 
 ## 🐛 Erros Conhecidos
