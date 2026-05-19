@@ -1,0 +1,13 @@
+# Node modules & Angular caches
+node_modules/
+.angular/
+dist/
+
+# Git & editor folders
+.git/
+.vscode/
+.idea/
+
+# Docker files
+Dockerfile
+.dockerignore
