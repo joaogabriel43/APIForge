@@ -1,0 +1,23 @@
+# Target & Maven build outputs
+target/
+*.jar
+*.war
+
+# Node modules & frontend outputs
+frontend/node_modules/
+frontend/dist/
+frontend/.angular/
+
+# Git & configuration templates
+.git/
+.github/
+.idea/
+.vscode/
+*.iml
+.env
+.env.example
+
+# Docker files
+docker-compose.yml
+Dockerfile
+.dockerignore
