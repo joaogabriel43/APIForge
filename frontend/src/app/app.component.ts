@@ -1,6 +1,6 @@
-import { Component } from '@angular/core';
+import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { FormsModule } from '@angular/forms';
+import { ReactiveFormsModule, FormBuilder, FormGroup, Validators } from '@angular/forms';
 import { MonacoEditorModule } from 'ngx-monaco-editor-v2';
 import { Subscription } from 'rxjs';
 import { GenerationApiService } from './core/services/generation-api.service';
@@ -15,15 +15,16 @@ interface GeneratedFile {
 @Component({
   selector: 'app-root',
   standalone: true,
-  imports: [CommonModule, FormsModule, MonacoEditorModule],
+  imports: [CommonModule, ReactiveFormsModule, MonacoEditorModule],
   templateUrl: './app.component.html',
   styleUrl: './app.component.css'
 })
-export class AppComponent {
+export class AppComponent implements OnInit {
   title = 'APIForge Code Playground';
+  generatorForm!: FormGroup;
 
-  // Input bindings
-  sqlCode = `CREATE TABLE users (
+  // Initial SQL input schema config
+  initialSql = `CREATE TABLE users (
     id UUID PRIMARY KEY,
     name VARCHAR(100) NOT NULL,
     email VARCHAR(255) UNIQUE NOT NULL,
@@ -33,16 +34,10 @@ export class AppComponent {
 CREATE TABLE posts (
     id UUID PRIMARY KEY,
     title VARCHAR(200) NOT NULL,
-    content TEXT,
+    body TEXT,
     user_id UUID NOT NULL REFERENCES users(id),
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );`;
-
-  packageName = 'com.apiforge.generated';
-  generateJwt = false;
-  generatePagination = false;
-  generateSoftDelete = false;
-  enrichWithLlm = false;
 
   // UI State
   isGenerating = false;
@@ -74,14 +69,37 @@ CREATE TABLE posts (
   };
 
   constructor(
+    private fb: FormBuilder,
     private generationApiService: GenerationApiService,
     private sseGenerationService: SseGenerationService
   ) {}
 
+  ngOnInit(): void {
+    this.initForm();
+  }
+
+  private initForm(): void {
+    this.generatorForm = this.fb.group({
+      sql: [this.initialSql, Validators.required],
+      packageName: ['com.apiforge.generated', [
+        Validators.required,
+        Validators.pattern(/^[a-z]+(\.[a-z]+)*$/)
+      ]],
+      generateJwt: [false],
+      generatePagination: [true],
+      generateSoftDelete: [false],
+      enrichWithLlm: [false]
+    });
+  }
+
+  // Reactive validation convenience helper getter
+  get f() {
+    return this.generatorForm.controls;
+  }
+
   // Run live SSE preview generation
   runLivePreview(): void {
-    if (!this.sqlCode.trim() || !this.packageName.trim()) {
-      this.generationError = 'SQL Schema and Package Name are required.';
+    if (this.generatorForm.invalid || this.isGenerating) {
       return;
     }
 
@@ -96,14 +114,7 @@ CREATE TABLE posts (
     this.selectedFile = null;
     this.selectedFileContent = '';
 
-    const options: GenerationOptions = {
-      sql: this.sqlCode,
-      packageName: this.packageName,
-      generateJwt: this.generateJwt,
-      generatePagination: this.generatePagination,
-      generateSoftDelete: this.generateSoftDelete,
-      enrichWithLlm: this.enrichWithLlm
-    };
+    const options: GenerationOptions = this.generatorForm.value;
 
     // Subscriptions setup
     const progressSub = this.sseGenerationService.progress$.subscribe(data => {
@@ -149,8 +160,7 @@ CREATE TABLE posts (
 
   // Download ZIP output
   downloadZip(): void {
-    if (!this.sqlCode.trim() || !this.packageName.trim()) {
-      this.generationError = 'SQL Schema and Package Name are required.';
+    if (this.generatorForm.invalid || this.isGenerating) {
       return;
     }
 
@@ -158,14 +168,7 @@ CREATE TABLE posts (
     this.generationError = '';
     this.logs = ['Packaging project source code ZIP...'];
 
-    const options: GenerationOptions = {
-      sql: this.sqlCode,
-      packageName: this.packageName,
-      generateJwt: this.generateJwt,
-      generatePagination: this.generatePagination,
-      generateSoftDelete: this.generateSoftDelete,
-      enrichWithLlm: this.enrichWithLlm
-    };
+    const options: GenerationOptions = this.generatorForm.value;
 
     this.generationApiService.downloadProject(options).subscribe({
       next: () => {
