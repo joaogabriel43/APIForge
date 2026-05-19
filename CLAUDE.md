@@ -40,6 +40,26 @@ com.apiforge/
     └── exception/              # Handler global de exceções e mapeador de HTTP Status
 ```
 
+### Estrutura do Frontend (Angular Playground)
+
+O ecossistema client reside na pasta `frontend/src/` e segue uma arquitetura modular orientada a componentes reativos:
+
+```
+frontend/src/
+│
+├── main.ts                     # Ponto de entrada bootstrap do Angular standalone
+├── styles.css                  # Folha de estilos central contendo diretivas Tailwind CSS
+│
+└── app/
+    ├── app.config.ts           # Configurações globais (Monaco, HTTP Client, Roteador)
+    ├── app.component.ts        # Controlador reativo principal (form validation, SSE events, memory leak preventions)
+    ├── app.component.html      # Layout grid com split File Tree e Code Viewer
+    │
+    └── core/                   # Núcleo da aplicação
+        ├── models/             # Tipagens e interfaces TypeScript (GenerationOptions, SSE events)
+        └── services/           # Serviços de comunicação HTTP/SSE reativos
+```
+
 ---
 
 ## 📋 Padrões do Projeto
@@ -146,6 +166,12 @@ com.apiforge/
 * **Contexto**: Enriquecer a geração com sugestões do LLM traz grande valor visual e semântico (Javadocs e nomes de domínio coerentes). Contudo, dependências externas e latências de APIs como a da OpenAI apresentam alta volatilidade (timeouts, indisponibilidade ou rate limit) que jamais podem comprometer o fluxo básico de geração principal de código-fonte das APIs (ZIP/SSE).
 * **Decisão**: Desenvolver um gateway altamente protegido com politicas de resiliência robustas do Resilience4j (Retry e Circuit Breaker de 10 falhas/10s de restabelecimento). Adotar a política de **Silent Fallback** estrita: quaisquer exceções ou indisponibilidades no canal LLM são capturadas silenciosamente na camada de aplicação retornando um `EnrichedSchema` neutro (un-enriched) com listas/mapas vazios, garantindo que o fluxo principal continue operando ininterruptamente sem nenhum impacto ao usuário final.
 * **Consequências**: Resiliência extrema do gerador de código, garantindo downloads ZIP e previews reativos instantâneos em 100% das requisições mesmo se a API da OpenAI estiver completamente indisponível.
+
+### ADR 013: Arquitetura do Frontend Playground (Sprint 05)
+* **Status**: Aprovado
+* **Contexto**: O frontend necessita interagir de forma reativa com o streaming SSE de preview em tempo real e fornecer download assíncrono e síncrono dos artefatos em ZIP. O design deve ser premium, reativo a estados de carregamento e compatível com telas desktop e mobile.
+* **Decisão**: Utilizar Angular 17 Standalone Components com formulários reativos (`ReactiveFormsModule`), comunicação nativa SSE por `EventSource` encapsulados em observables RxJS frios, downloads do tipo Blob HTTP (ZIP), estilização HSL Tailored Hires com Tailwind CSS puro e o Monaco Editor off-line mapeado localmente via assets no `angular.json` para máxima portabilidade e performance off-line.
+* **Consequências**: Interface fluida, sem memory leaks graças ao ciclo `ngOnDestroy` e disconnect programático do `EventSource`, sem acoplamentos de bibliotecas pesadas de componentes e compatibilidade visual avançada com modo escuro.
 
 ---
 
