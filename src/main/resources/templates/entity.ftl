@@ -6,10 +6,14 @@ import java.util.*;
 import java.time.*;
 import java.math.BigDecimal;
 
+<#if table.javadoc?? && table.javadoc?has_content>
+${table.javadoc}
+<#else>
 /**
  * Entity class representing the database table "${table.name}".
  * Generated automatically by APIForge.
  */
+</#if>
 @Entity
 @Table(name = "${table.name}")
 @Getter

@@ -13,10 +13,14 @@ import org.springframework.transaction.annotation.Transactional;
 import lombok.RequiredArgsConstructor;
 import java.util.UUID;
 
+<#if table.javadoc?? && table.javadoc?has_content>
+${table.javadoc}
+<#else>
 /**
  * Service orchestrating application-level operations for ${table.className}.
  * Generated automatically by APIForge.
  */
+</#if>
 @Service
 @RequiredArgsConstructor
 @Transactional(readOnly = true)
