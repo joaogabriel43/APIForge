@@ -10,8 +10,8 @@
           </svg>
         </div>
         <div>
-          <h1 class="text-xl font-bold tracking-tight bg-gradient-to-r from-white via-slate-200 to-slate-400 bg-clip-text text-transparent">APIForge Playground</h1>
-          <p class="text-xs text-cyan-400 font-medium tracking-wide">SPRINT 05 — REAL-TIME COMPILATION ENGINE</p>
+          <h1 class="text-xl font-bold tracking-tight bg-gradient-to-r from-white via-slate-200 to-slate-400 bg-clip-text text-transparent">APIForge</h1>
+          <p class="text-xs text-slate-400">Spring Boot project generator from SQL schema</p>
         </div>
       </div>
       <div class="flex items-center space-x-4">
@@ -24,11 +24,21 @@
   </header>
 
   <!-- Content Workspace -->
-  <main class="flex-1 max-w-[1600px] w-full mx-auto p-6 grid grid-cols-1 lg:grid-cols-12 gap-6">
+  <main class="flex-1 max-w-[1600px] w-full mx-auto p-6 grid grid-cols-1 lg:grid-cols-5 gap-6">
     
-    <!-- Left Column: Input Panel -->
-    <div class="lg:col-span-5 flex flex-col space-y-6">
+    <!-- Left Column: Input Panel & Options Form -->
+    <form [formGroup]="generatorForm" class="lg:col-span-2 flex flex-col space-y-6">
       
+      <!-- Responsive Mobile Warning Banner -->
+      <div class="block md:hidden bg-gradient-to-r from-amber-500/10 to-orange-500/10 border border-orange-500/30 p-4 rounded-xl text-center text-xs text-orange-400 font-medium select-none shadow-lg mb-2 animate-pulse">
+        <span class="flex items-center justify-center space-x-1.5">
+          <svg class="h-4 w-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+          </svg>
+          <span>Use desktop for live preview</span>
+        </span>
+      </div>
+
       <!-- SQL Schema Card -->
       <div class="bg-slate-900/40 border border-slate-800 rounded-2xl p-5 flex flex-col space-y-4 shadow-xl backdrop-blur-sm relative overflow-hidden group">
         <div class="absolute top-0 left-0 right-0 h-[2px] bg-gradient-to-r from-transparent via-cyan-500 to-transparent opacity-50"></div>
@@ -39,8 +49,8 @@
           </div>
           <span class="text-xs text-slate-500 font-mono">PostgreSQL Dialect</span>
         </div>
-        <div class="h-[320px] rounded-xl border border-slate-800 overflow-hidden bg-slate-950/60 focus-within:border-cyan-500/50 transition">
-          <ngx-monaco-editor class="h-full w-full" [options]="sqlEditorOptions" [(ngModel)]="sqlCode"></ngx-monaco-editor>
+        <div class="h-[400px] rounded-xl border border-slate-800 overflow-hidden bg-slate-950/60 focus-within:border-cyan-500/50 transition">
+          <ngx-monaco-editor class="h-full w-full" [options]="sqlEditorOptions" formControlName="sql"></ngx-monaco-editor>
         </div>
       </div>
 
@@ -56,56 +66,96 @@
           <!-- Package name -->
           <div class="md:col-span-2 flex flex-col space-y-1.5">
             <label class="text-xs text-slate-400 font-medium">Base Package Structure</label>
-            <input type="text" [(ngModel)]="packageName" 
-                   class="bg-slate-950/60 border border-slate-800 rounded-xl px-4 py-2.5 text-sm text-slate-200 focus:outline-none focus:border-cyan-500/50 transition font-mono" 
+            <input type="text" formControlName="packageName" 
+                   class="bg-slate-950/60 border rounded-xl px-4 py-2.5 text-sm text-slate-200 focus:outline-none transition font-mono"
+                   [ngClass]="{
+                     'border-rose-500/80 focus:border-rose-500/80 focus:ring-1 focus:ring-rose-500/30': f['packageName'].invalid && (f['packageName'].dirty || f['packageName'].touched),
+                     'border-slate-800 focus:border-cyan-500/50 focus:ring-1 focus:ring-cyan-500/30': !f['packageName'].invalid || (!f['packageName'].dirty && !f['packageName'].touched)
+                   }"
                    placeholder="e.g. com.mycompany.api">
+            
+            @if (f['packageName'].invalid && (f['packageName'].dirty || f['packageName'].touched)) {
+              <span class="text-[11px] text-rose-400 font-medium pl-1">
+                Package name must be a valid lower-case Java package structure (e.g. com.example.myapp).
+              </span>
+            }
           </div>
 
           <!-- Boolean toggles -->
-          <div class="space-y-3 md:col-span-2 grid grid-cols-2 gap-x-4 gap-y-3">
-            <label class="flex items-center space-x-3 cursor-pointer group text-slate-300 select-none">
-              <input type="checkbox" [(ngModel)]="generateJwt" class="rounded border-slate-700 bg-slate-950 text-cyan-600 focus:ring-cyan-500/40">
-              <span class="text-sm group-hover:text-white transition">Spring Security JWT</span>
+          <div class="space-y-4 md:col-span-2 grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-4">
+            
+            <label class="flex items-start space-x-3 cursor-pointer group text-slate-300 select-none">
+              <input type="checkbox" formControlName="generateJwt" class="mt-1 rounded border-slate-700 bg-slate-950 text-cyan-600 focus:ring-cyan-500/40">
+              <div class="flex flex-col">
+                <span class="text-sm group-hover:text-white transition">Spring Security JWT</span>
+                <span class="text-[10px] text-slate-500">Includes login endpoints & security filters</span>
+              </div>
             </label>
             
-            <label class="flex items-center space-x-3 cursor-pointer group text-slate-300 select-none">
-              <input type="checkbox" [(ngModel)]="generatePagination" class="rounded border-slate-700 bg-slate-950 text-cyan-600 focus:ring-cyan-500/40">
-              <span class="text-sm group-hover:text-white transition">Spring Data Pagination</span>
+            <label class="flex items-start space-x-3 cursor-pointer group text-slate-300 select-none">
+              <input type="checkbox" formControlName="generatePagination" class="mt-1 rounded border-slate-700 bg-slate-950 text-cyan-600 focus:ring-cyan-500/40">
+              <div class="flex flex-col">
+                <span class="text-sm group-hover:text-white transition">Spring Data Pagination</span>
+                <span class="text-[10px] text-slate-500">Adds Page & Pageable query parameters</span>
+              </div>
             </label>
             
-            <label class="flex items-center space-x-3 cursor-pointer group text-slate-300 select-none">
-              <input type="checkbox" [(ngModel)]="generateSoftDelete" class="rounded border-slate-700 bg-slate-950 text-cyan-600 focus:ring-cyan-500/40">
-              <span class="text-sm group-hover:text-white transition">Hibernate Soft Delete</span>
+            <label class="flex items-start space-x-3 cursor-pointer group text-slate-300 select-none">
+              <input type="checkbox" formControlName="generateSoftDelete" class="mt-1 rounded border-slate-700 bg-slate-950 text-cyan-600 focus:ring-cyan-500/40">
+              <div class="flex flex-col">
+                <span class="text-sm group-hover:text-white transition">Hibernate Soft Delete</span>
+                <span class="text-[10px] text-slate-500">Applies &#64;SQLDelete annotations to entities</span>
+              </div>
             </label>
             
-            <label class="flex items-center space-x-3 cursor-pointer group text-slate-300 select-none">
-              <input type="checkbox" [(ngModel)]="enrichWithLlm" class="rounded border-slate-700 bg-slate-950 text-cyan-600 focus:ring-cyan-500/40">
-              <span class="text-sm text-cyan-400 group-hover:text-cyan-300 transition flex items-center space-x-1 font-semibold">
-                <span>AI Enhancement</span>
-                <span class="text-[9px] bg-cyan-950 text-cyan-400 border border-cyan-800/60 px-1 rounded">BETA</span>
-              </span>
+            <label class="flex items-start space-x-3 cursor-pointer group text-slate-300 select-none">
+              <input type="checkbox" formControlName="enrichWithLlm" class="mt-1 rounded border-slate-700 bg-slate-950 text-cyan-600 focus:ring-cyan-500/40">
+              <div class="flex flex-col">
+                <span class="text-sm text-cyan-400 group-hover:text-cyan-300 transition flex items-center space-x-1.5 font-semibold">
+                  <span>AI Enhancement</span>
+                  <span class="text-[9px] bg-cyan-950 text-cyan-400 border border-cyan-800/60 px-1.5 py-0.5 rounded font-bold uppercase tracking-wider">BETA</span>
+                </span>
+                <span class="text-[10px] text-slate-450 mt-0.5">Infers implicit relationships and generates Javadoc</span>
+              </div>
             </label>
+            
           </div>
         </div>
 
         <!-- Action triggers -->
         <div class="grid grid-cols-2 gap-4 pt-2">
-          <button (click)="runLivePreview()" [disabled]="isGenerating"
-                  class="bg-gradient-to-r from-slate-800 to-slate-900 border border-slate-700/80 hover:border-cyan-500/50 hover:text-cyan-300 font-medium py-3 px-4 rounded-xl text-sm flex items-center justify-center space-x-2 transition shadow-lg disabled:opacity-50 select-none">
-            <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-            </svg>
+          
+          <button type="button" (click)="runLivePreview()" [disabled]="isGenerating || generatorForm.invalid"
+                  class="bg-gradient-to-r from-slate-800 to-slate-900 border border-slate-700/80 hover:border-cyan-500/50 hover:text-cyan-300 font-medium py-3 px-4 rounded-xl text-sm flex items-center justify-center space-x-2 transition shadow-lg disabled:opacity-50 disabled:cursor-not-allowed select-none">
+            @if (isGenerating) {
+              <svg class="animate-spin h-4 w-4 text-cyan-400" fill="none" viewBox="0 0 24 24">
+                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+              </svg>
+            } @else {
+              <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+              </svg>
+            }
             <span>Live Preview (SSE)</span>
           </button>
 
-          <button (click)="downloadZip()" [disabled]="isGenerating"
-                  class="bg-gradient-to-r from-cyan-500 to-indigo-600 text-white font-medium py-3 px-4 rounded-xl text-sm flex items-center justify-center space-x-2 transition shadow-lg shadow-cyan-500/10 hover:shadow-cyan-500/20 hover:brightness-110 active:scale-95 disabled:opacity-50 select-none">
-            <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
-            </svg>
+          <button type="button" (click)="downloadZip()" [disabled]="isGenerating || generatorForm.invalid"
+                  class="bg-gradient-to-r from-cyan-500 to-indigo-600 text-white font-medium py-3 px-4 rounded-xl text-sm flex items-center justify-center space-x-2 transition shadow-lg shadow-cyan-500/10 hover:shadow-cyan-500/20 hover:brightness-110 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed select-none">
+            @if (isGenerating) {
+              <svg class="animate-spin h-4 w-4 text-white" fill="none" viewBox="0 0 24 24">
+                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+              </svg>
+            } @else {
+              <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+              </svg>
+            }
             <span>Download ZIP</span>
           </button>
+          
         </div>
 
         <!-- Error panel -->
@@ -140,11 +190,11 @@
         </div>
       </div>
 
-    </div>
+    </form>
 
     <!-- Right Column: Output Panel & Monaco Preview -->
-    <div class="lg:col-span-7 flex flex-col">
-      <div class="bg-slate-900/40 border border-slate-800 rounded-2xl p-5 flex flex-col h-full shadow-xl backdrop-blur-sm min-h-[500px]">
+    <div class="hidden md:flex lg:col-span-3 flex-col">
+      <div class="bg-slate-900/40 border border-slate-800 rounded-2xl p-5 flex flex-col h-full shadow-xl backdrop-blur-sm min-h-[500px] w-full">
         
         <!-- Tab Explorers Header -->
         <div class="border-b border-slate-800 pb-3 flex items-center justify-between mb-4">
@@ -162,13 +212,13 @@
             <!-- File Explorer Horizontal Tabs -->
             <div class="flex items-center space-x-2 overflow-x-auto pb-2 scrollbar-thin scrollbar-thumb-slate-800 scrollbar-track-transparent">
               @for (file of files; track file.name) {
-                <button (click)="selectFile(file)"
+                <button type="button" (click)="selectFile(file)"
                         [ngClass]="{
                           'border-cyan-500 bg-slate-800/80 text-cyan-400': isFileSelected(file),
                           'border-transparent text-slate-400 hover:text-slate-200 hover:bg-slate-800/40': !isFileSelected(file)
                         }"
-                        class="border-b-2 px-3 py-2 text-xs font-mono rounded-t-lg bg-slate-950/40 transition shrink-0 flex items-center space-x-1.5 select-none">
-                  <svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        class="border-b-2 px-3 py-2 text-xs font-mono rounded-t-lg bg-slate-950/40 transition shrink-0 flex items-center space-x-1.5 select-none font-bold">
+                  <svg class="h-3.5 w-3.5 text-cyan-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
                   </svg>
                   <span>{{ getFileName(file.name) }}</span>
@@ -208,4 +258,24 @@
     </div>
 
   </main>
+
+  <!-- Simple Footer -->
+  <footer class="border-t border-slate-900 bg-slate-950 py-6 mt-8">
+    <div class="max-w-[1600px] w-full mx-auto px-6 flex flex-col md:flex-row items-center justify-between text-xs text-slate-500 space-y-3 md:space-y-0">
+      <div>
+        &copy; 2026 APIForge. All rights reserved.
+      </div>
+      <div class="flex items-center space-x-4">
+        <a href="https://github.com/joaogabriel43/APIForge" target="_blank" rel="noopener noreferrer" 
+           class="hover:text-cyan-400 transition flex items-center space-x-1.5">
+          <svg class="h-4 w-4" fill="currentColor" viewBox="0 0 24 24">
+            <path fill-rule="evenodd" clip-rule="evenodd" d="M12 2C6.477 2 2 6.477 2 12c0 4.42 2.87 8.17 6.84 9.5.5.08.66-.23.66-.5v-1.69c-2.77.6-3.36-1.34-3.36-1.34-.46-1.16-1.11-1.47-1.11-1.47-.9-.62.07-.6.07-.6 1 .07 1.53 1.03 1.53 1.03.9 1.52 2.34 1.07 2.91.83.09-.65.35-1.09.63-1.34-2.22-.25-4.55-1.11-4.55-4.92 0-1.11.38-2 1.03-2.71-.1-.25-.45-1.29.1-2.64 0 0 .84-.27 2.75 1.02.79-.22 1.65-.33 2.5-.33.85 0 1.71.11 2.5.33 1.91-1.29 2.75-1.02 2.75-1.02.55 1.35.2 2.39.1 2.64.65.71 1.03 1.6 1.03 2.71 0 3.82-2.34 4.66-4.57 4.91.36.31.69.92.69 1.85V21c0 .27.16.59.67.5C19.14 20.16 22 16.42 22 12A10 10 0 0012 2z"/>
+          </svg>
+          <span>GitHub Repository</span>
+        </a>
+      </div>
+    </div>
+  </footer>
+
 </div>
+

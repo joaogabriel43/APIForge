@@ -1,6 +1,6 @@
 import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { ReactiveFormsModule, FormBuilder, FormGroup, Validators } from '@angular/forms';
+import { ReactiveFormsModule, FormBuilder, FormGroup, Validators, FormsModule } from '@angular/forms';
 import { MonacoEditorModule } from 'ngx-monaco-editor-v2';
 import { Subscription } from 'rxjs';
 import { GenerationApiService } from './core/services/generation-api.service';
@@ -15,7 +15,7 @@ interface GeneratedFile {
 @Component({
   selector: 'app-root',
   standalone: true,
-  imports: [CommonModule, ReactiveFormsModule, MonacoEditorModule],
+  imports: [CommonModule, ReactiveFormsModule, FormsModule, MonacoEditorModule],
   templateUrl: './app.component.html',
   styleUrl: './app.component.css'
 })
