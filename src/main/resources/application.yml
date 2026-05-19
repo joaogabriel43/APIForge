@@ -46,3 +46,24 @@ decorator:
       enable-logging: true
       multiline: true
       logging: sysout
+
+# OpenAI API Decoupled Configuration
+openai:
+  api:
+    url: ${OPENAI_API_URL:https://api.openai.com/v1/chat/completions}
+    key: ${OPENAI_API_KEY:}
+
+# Resilience4j Aspects Configurations
+resilience4j:
+  circuitbreaker:
+    instances:
+      openai:
+        failureRateThreshold: 50
+        waitDurationInOpenState: 30s
+        permittedNumberOfCallsInHalfOpenState: 2
+        slidingWindowSize: 10
+  retry:
+    instances:
+      openai:
+        maxAttempts: 2
+        waitDuration: 1s
