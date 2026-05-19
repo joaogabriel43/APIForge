@@ -158,6 +158,7 @@ class OpenAiLlmGatewayIT {
         assertTrue(javadocs.get("User").contains("User entity domain definitions"));
     }
 
+    // Scenario 2: Validate HTTP 500 retry backoffs resulting in successful subsequent calls
     @Test
     void shouldTransparentlyRetryOnTransientServerErrorAndSucceed() {
         String retrySuccessResponse = "{\n" +
@@ -189,6 +190,7 @@ class OpenAiLlmGatewayIT {
         assertTrue(suggestions.isEmpty());
     }
 
+    // Scenario 3: Validate consecutive HTTP 500 errors tripping the circuit and bypassing network calls
     @Test
     void shouldOpenCircuitAndFailFastWhenConsequentialErrorsExceedThreshold() {
         // Stub all calls to return HTTP 500 Server Error
