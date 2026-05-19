@@ -121,4 +121,54 @@
             </plugin>
         </plugins>
     </build>
+
+    <profiles>
+        <profile>
+            <id>ci</id>
+            <build>
+                <plugins>
+                    <!-- SpotBugs Static Analysis -->
+                    <plugin>
+                        <groupId>com.github.spotbugs</groupId>
+                        <artifactId>spotbugs-maven-plugin</artifactId>
+                        <version>4.8.6.2</version>
+                        <configuration>
+                            <effort>Max</effort>
+                            <threshold>Medium</threshold>
+                            <failOnError>true</failOnError>
+                            <includeTests>false</includeTests>
+                        </configuration>
+                        <executions>
+                            <execution>
+                                <id>spotbugs-check</id>
+                                <phase>verify</phase>
+                                <goals>
+                                    <goal>check</goal>
+                                </goals>
+                            </execution>
+                        </executions>
+                    </plugin>
+                    <!-- OWASP Dependency-Check -->
+                    <plugin>
+                        <groupId>org.owasp</groupId>
+                        <artifactId>dependency-check-maven</artifactId>
+                        <version>10.0.3</version>
+                        <configuration>
+                            <failBuildOnCVSS>7.0</failBuildOnCVSS> <!-- Fails on High/Critical vulnerabilities (CVSS >= 7.0) -->
+                            <assemblyAnalyzerEnabled>false</assemblyAnalyzerEnabled> <!-- Speed up check by skipping .NET/Assembly scanning -->
+                        </configuration>
+                        <executions>
+                            <execution>
+                                <id>owasp-check</id>
+                                <phase>verify</phase>
+                                <goals>
+                                    <goal>check</goal>
+                                </goals>
+                            </execution>
+                        </executions>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
+    </profiles>
 </project>
