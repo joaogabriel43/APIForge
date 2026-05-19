@@ -12,7 +12,7 @@ import java.math.BigDecimal;
 public record ${table.className}Request(
 <#assign first = true>
 <#list table.columns as col>
-  <#if !col.primaryKey && col.name != "id" && col.name != "created_at" && col.name != "updated_at">
+  <#if !col.primaryKey && !col.foreignKey && col.name != "id" && col.name != "created_at" && col.name != "updated_at">
     <#if !first>,
 </#if>
     <#if !col.nullable>
