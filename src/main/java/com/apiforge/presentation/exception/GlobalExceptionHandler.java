@@ -72,6 +72,27 @@ public class GlobalExceptionHandler {
     }
 
     /**
+     * Intercepts IllegalArgumentException.
+     * Returns HTTP 400 Bad Request with the parameter violation details.
+     */
+    @ExceptionHandler(IllegalArgumentException.class)
+    public ResponseEntity<ApiErrorResponse> handleIllegalArgumentException(IllegalArgumentException ex, WebRequest request) {
+        log.warn("Validation argument violation on request {}: {}", getRequestUri(request), ex.getMessage());
+
+        ApiErrorResponse response = new ApiErrorResponse(
+                "https://apiforge.com/errors/validation-failed",
+                "Validation Failed",
+                HttpStatus.BAD_REQUEST.value(),
+                ex.getMessage(),
+                getRequestUri(request),
+                Instant.now(),
+                null
+        );
+
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(response);
+    }
+
+    /**
      * Fallback general exception handler matching unexpected Java/Spring exceptions (Exception).
      * Returns HTTP 500 Internal Server Error with a highly sanitized, cryptographically secure warning.
      * Prevents technical database structure or programming languages leaks.

@@ -47,7 +47,6 @@ class GenerationControllerTest {
     @Mock
     private GenerationAuditService generationAuditService;
 
-    @InjectMocks
     private GenerationController generationController;
 
     private final ObjectMapper objectMapper = new ObjectMapper();
@@ -55,6 +54,13 @@ class GenerationControllerTest {
     @BeforeEach
     void setUp() {
         MockitoAnnotations.openMocks(this);
+        this.generationController = new GenerationController(
+                sqlSchemaParser,
+                codeGenerationService,
+                zipGeneratorService,
+                generationAuditService,
+                objectMapper
+        );
         this.mockMvc = MockMvcBuilders.standaloneSetup(generationController)
                 .setControllerAdvice(new GlobalExceptionHandler())
                 .build();
