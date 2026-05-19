@@ -2,7 +2,9 @@ package com.apiforge.presentation.controller;
 
 import com.apiforge.application.service.CodeGenerationService;
 import com.apiforge.application.service.GenerationAuditService;
+import com.apiforge.application.service.SchemaEnrichmentService;
 import com.apiforge.application.service.SqlSchemaParser;
+import com.apiforge.domain.model.EnrichedSchema;
 import com.apiforge.domain.model.GenerationOptions;
 import com.apiforge.infrastructure.service.ZipGeneratorService;
 import com.apiforge.presentation.dto.GenerationRequest;
@@ -20,12 +22,14 @@ import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 
 import java.io.IOException;
+import java.util.List;
 import java.util.Map;
 
 import static org.hamcrest.Matchers.*;
 import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.*;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -37,6 +41,9 @@ class GenerationControllerTest {
 
     @Mock
     private SqlSchemaParser sqlSchemaParser;
+
+    @Mock
+    private SchemaEnrichmentService schemaEnrichmentService;
 
     @Mock
     private CodeGenerationService codeGenerationService;
@@ -54,8 +61,14 @@ class GenerationControllerTest {
     @BeforeEach
     void setUp() {
         MockitoAnnotations.openMocks(this);
+        
+        // Setup default transparent enrichment mock behavior
+        when(schemaEnrichmentService.enrich(any(), anyBoolean()))
+                .thenAnswer(invocation -> new EnrichedSchema(invocation.getArgument(0), List.of(), Map.of(), Map.of()));
+
         this.generationController = new GenerationController(
                 sqlSchemaParser,
+                schemaEnrichmentService,
                 codeGenerationService,
                 zipGeneratorService,
                 generationAuditService,

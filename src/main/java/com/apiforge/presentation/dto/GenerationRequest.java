@@ -20,7 +20,8 @@ public record GenerationRequest(
 
     Boolean generateJwt,
     Boolean generatePagination,
-    Boolean generateSoftDelete
+    Boolean generateSoftDelete,
+    Boolean enrichWithLlm
 ) {
     /**
      * Compact constructor to normalize and assign defaults to optional boolean attributes.
@@ -35,6 +36,16 @@ public record GenerationRequest(
         if (generateSoftDelete == null) {
             generateSoftDelete = false;
         }
+        if (enrichWithLlm == null) {
+            enrichWithLlm = false;
+        }
+    }
+
+    /**
+     * Overloaded constructor to preserve backward compatibility for 5-parameter callers.
+     */
+    public GenerationRequest(String sql, String packageName, Boolean generateJwt, Boolean generatePagination, Boolean generateSoftDelete) {
+        this(sql, packageName, generateJwt, generatePagination, generateSoftDelete, false);
     }
 
     /**

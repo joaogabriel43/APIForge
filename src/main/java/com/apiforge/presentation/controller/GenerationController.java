@@ -2,7 +2,9 @@ package com.apiforge.presentation.controller;
 
 import com.apiforge.application.service.CodeGenerationService;
 import com.apiforge.application.service.GenerationAuditService;
+import com.apiforge.application.service.SchemaEnrichmentService;
 import com.apiforge.application.service.SqlSchemaParser;
+import com.apiforge.domain.model.EnrichedSchema;
 import com.apiforge.domain.model.GenerationOptions;
 import com.apiforge.domain.model.ParsedSchema;
 import com.apiforge.infrastructure.service.ZipGeneratorService;
@@ -37,6 +39,7 @@ public class GenerationController {
     private static final Logger log = LoggerFactory.getLogger(GenerationController.class);
 
     private final SqlSchemaParser sqlSchemaParser;
+    private final SchemaEnrichmentService schemaEnrichmentService;
     private final CodeGenerationService codeGenerationService;
     private final ZipGeneratorService zipGeneratorService;
     private final GenerationAuditService generationAuditService;
@@ -47,12 +50,14 @@ public class GenerationController {
      */
     public GenerationController(
             SqlSchemaParser sqlSchemaParser,
+            SchemaEnrichmentService schemaEnrichmentService,
             CodeGenerationService codeGenerationService,
             ZipGeneratorService zipGeneratorService,
             GenerationAuditService generationAuditService,
             ObjectMapper objectMapper
     ) {
         this.sqlSchemaParser = sqlSchemaParser;
+        this.schemaEnrichmentService = schemaEnrichmentService;
         this.codeGenerationService = codeGenerationService;
         this.zipGeneratorService = zipGeneratorService;
         this.generationAuditService = generationAuditService;
@@ -72,8 +77,11 @@ public class GenerationController {
         // 1. Invoke JSQLParser to build the parsed schema aggregate
         ParsedSchema schema = SqlSchemaParser.parse(request.sql());
 
+        // 1b. Enrich schema via LLM (with silent fallback try-catch inside the service)
+        EnrichedSchema enrichedSchema = schemaEnrichmentService.enrich(schema, request.enrichWithLlm());
+
         // 2. Render code templates for all layers, generating relative virtual files
-        Map<String, String> generatedFiles = codeGenerationService.generate(schema, request.toOptions());
+        Map<String, String> generatedFiles = codeGenerationService.generate(enrichedSchema, request.toOptions());
 
         // 3. Compress the virtual files map into a platform-agnostic in-memory ZIP byte array
         byte[] zipBytes = zipGeneratorService.generateZip(generatedFiles);
@@ -98,6 +106,7 @@ public class GenerationController {
      * @param generateJwt         Flag enabling Spring Security JWT components (optional, defaults to false).
      * @param generatePagination  Flag enabling controller Page/Pageable integration (optional, defaults to false).
      * @param generateSoftDelete  Flag enabling SQL logical soft delete mechanisms (optional, defaults to false).
+     * @param enrichWithLlm       Flag enabling LLM-based enrichment (optional, defaults to false).
      * @return Fully configured SseEmitter instance.
      */
     @GetMapping("/preview")
@@ -106,7 +115,8 @@ public class GenerationController {
             @RequestParam("packageName") String packageName,
             @RequestParam(value = "generateJwt", required = false, defaultValue = "false") boolean generateJwt,
             @RequestParam(value = "generatePagination", required = false, defaultValue = "false") boolean generatePagination,
-            @RequestParam(value = "generateSoftDelete", required = false, defaultValue = "false") boolean generateSoftDelete
+            @RequestParam(value = "generateSoftDelete", required = false, defaultValue = "false") boolean generateSoftDelete,
+            @RequestParam(value = "enrichWithLlm", required = false, defaultValue = "false") boolean enrichWithLlm
     ) {
         // Perform GET parameter validations matching structural DTO annotations
         if (sql == null || sql.isBlank()) {
@@ -131,10 +141,11 @@ public class GenerationController {
                 }
 
                 ParsedSchema schema = SqlSchemaParser.parse(sql);
+                EnrichedSchema enrichedSchema = schemaEnrichmentService.enrich(schema, enrichWithLlm);
                 GenerationOptions options = new GenerationOptions(packageName, generateJwt, generatePagination, generateSoftDelete);
                 
                 // Phase 2: rendering templates
-                Map<String, String> generatedFiles = codeGenerationService.generate(schema, options);
+                Map<String, String> generatedFiles = codeGenerationService.generate(enrichedSchema, options);
 
                 // Phase 3: streaming generated virtual files with artificially injected delay
                 for (Map.Entry<String, String> entry : generatedFiles.entrySet()) {

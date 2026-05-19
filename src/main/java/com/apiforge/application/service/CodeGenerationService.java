@@ -1,9 +1,11 @@
 package com.apiforge.application.service;
 
 import com.apiforge.domain.model.ColumnDefinition;
+import com.apiforge.domain.model.EnrichedSchema;
 import com.apiforge.domain.model.GenerationOptions;
 import com.apiforge.domain.model.ParsedSchema;
 import com.apiforge.domain.model.RelationshipDefinition;
+import com.apiforge.domain.model.RelationshipSuggestion;
 import com.apiforge.domain.model.TableSchema;
 import com.apiforge.domain.service.NamingConventionService;
 import freemarker.template.Configuration;
@@ -35,17 +37,41 @@ public class CodeGenerationService {
     /**
      * Generates source code and configuration files for all application layers.
      * 
-     * @param schema  The parsed relational schema.
-     * @param options Target packages and parameters for code generation.
+     * @param enrichedSchema  The enriched schema wrapper containing LLM suggestions and defaults.
+     * @param options         Target packages and parameters for code generation.
      * @return A map of logical/relative file paths to rendered source code contents.
      */
-    public Map<String, String> generate(ParsedSchema schema, GenerationOptions options) {
+    public Map<String, String> generate(EnrichedSchema enrichedSchema, GenerationOptions options) {
+        ParsedSchema schema = enrichedSchema.parsedSchema();
         Map<String, String> generatedFiles = new HashMap<>();
         String pkgPath = options.packageName().replace('.', '/');
 
+        // Merge parsed schema relationships with LLM implicit relationship suggestions
+        List<RelationshipDefinition> mergedRelationships = new ArrayList<>(schema.relationships());
+        for (RelationshipSuggestion sugg : enrichedSchema.implicitRelationships()) {
+            boolean exists = mergedRelationships.stream().anyMatch(r ->
+                r.sourceTable().equalsIgnoreCase(sugg.fromTable()) &&
+                r.targetTable().equalsIgnoreCase(sugg.toTable()) &&
+                r.relationshipType().equalsIgnoreCase(sugg.type())
+            );
+            if (!exists) {
+                mergedRelationships.add(new RelationshipDefinition(
+                    sugg.fromTable(),
+                    sugg.toTable(),
+                    sugg.type()
+                ));
+            }
+        }
+
         // 1. Process and generate per-table source code files
         for (TableSchema tableSchema : schema.tables()) {
-            Map<String, Object> context = buildTableContext(tableSchema, schema.relationships(), options);
+            Map<String, Object> context = buildTableContext(
+                    tableSchema,
+                    mergedRelationships,
+                    options,
+                    enrichedSchema.domainNamesMap(),
+                    enrichedSchema.javadocsMap()
+            );
 
             @SuppressWarnings("unchecked")
             Map<String, Object> tableMap = (Map<String, Object>) context.get("table");
@@ -73,7 +99,13 @@ public class CodeGenerationService {
         // 2. Generate project-wide configuration and build files
         if (!schema.tables().isEmpty()) {
             TableSchema firstTable = schema.tables().get(0);
-            Map<String, Object> context = buildTableContext(firstTable, schema.relationships(), options);
+            Map<String, Object> context = buildTableContext(
+                    firstTable,
+                    mergedRelationships,
+                    options,
+                    enrichedSchema.domainNamesMap(),
+                    enrichedSchema.javadocsMap()
+            );
 
             generatedFiles.put("docker-compose.yml", renderTemplate("docker-compose.ftl", context));
             generatedFiles.put("src/main/resources/application.properties", renderTemplate("application-properties.ftl", context));
@@ -94,22 +126,41 @@ public class CodeGenerationService {
         }
     }
 
-    private Map<String, Object> buildTableContext(TableSchema tableSchema, List<RelationshipDefinition> allRelationships, GenerationOptions options) {
+    private Map<String, Object> buildTableContext(
+            TableSchema tableSchema,
+            List<RelationshipDefinition> allRelationships,
+            GenerationOptions options,
+            Map<String, String> domainNamesMap,
+            Map<String, String> javadocsMap
+    ) {
         Map<String, Object> context = new HashMap<>();
         context.put("options", options);
 
+        // Fetch clean domain names for the table if suggested
+        String cleanTableName = domainNamesMap.getOrDefault(tableSchema.name(), tableSchema.name());
+        String className = NamingConventionService.toClassName(cleanTableName);
+        String fieldName = NamingConventionService.toFieldName(cleanTableName);
+        String restRoute = NamingConventionService.toRestRoute(cleanTableName);
+
         Map<String, Object> tableMap = new HashMap<>();
         tableMap.put("name", tableSchema.name());
-        tableMap.put("className", NamingConventionService.toClassName(tableSchema.name()));
-        tableMap.put("fieldName", NamingConventionService.toFieldName(tableSchema.name()));
-        tableMap.put("restRoute", NamingConventionService.toRestRoute(tableSchema.name()));
+        tableMap.put("className", className);
+        tableMap.put("fieldName", fieldName);
+        tableMap.put("restRoute", restRoute);
+
+        // Inject Javadoc block if present
+        tableMap.put("javadoc", javadocsMap.getOrDefault(tableSchema.name(), ""));
 
         // Map column details to template properties
         List<Map<String, Object>> columnsList = new ArrayList<>();
         for (ColumnDefinition col : tableSchema.columns()) {
             Map<String, Object> colMap = new HashMap<>();
             colMap.put("name", col.name());
-            colMap.put("fieldName", NamingConventionService.toFieldName(col.name()));
+
+            // Fetch clean domain name for the column if suggested
+            String cleanColName = domainNamesMap.getOrDefault(col.name(), col.name());
+            colMap.put("fieldName", NamingConventionService.toFieldName(cleanColName));
+
             colMap.put("originalSqlType", col.originalSqlType());
             colMap.put("javaType", col.mappedJavaType());
             colMap.put("jpaAnnotation", col.jpaAnnotation());
@@ -142,24 +193,31 @@ public class CodeGenerationService {
                     }
                 }
                 
+                // Fetch clean domain name for the target table if suggested
+                String targetCleanTableName = domainNamesMap.getOrDefault(rel.targetTable(), rel.targetTable());
+                
                 relMap.put("fkColumnName", fkColumn);
                 relMap.put("nullable", isFkNullable);
-                relMap.put("targetClassName", NamingConventionService.toClassName(rel.targetTable()));
+                relMap.put("targetClassName", NamingConventionService.toClassName(targetCleanTableName));
                 relMap.put("targetTableName", rel.targetTable());
                 relMap.put("fieldName", NamingConventionService.toRelationshipFieldName(fkColumn));
                 relationshipsList.add(relMap);
                 
             } else if (rel.relationshipType().equalsIgnoreCase("OneToMany") && rel.sourceTable().equalsIgnoreCase(tableSchema.name())) {
                 relMap.put("type", "OneToMany");
-                relMap.put("targetClassName", NamingConventionService.toClassName(rel.targetTable()));
+                
+                // Fetch clean domain name for the target table if suggested
+                String targetCleanTableName = domainNamesMap.getOrDefault(rel.targetTable(), rel.targetTable());
+                relMap.put("targetClassName", NamingConventionService.toClassName(targetCleanTableName));
                 
                 // Formulate target plural collection property (e.g. "posts")
-                String pluralRoute = NamingConventionService.toRestRoute(rel.targetTable());
+                String pluralRoute = NamingConventionService.toRestRoute(targetCleanTableName);
                 String pluralName = pluralRoute.startsWith("/") ? pluralRoute.substring(1) : pluralRoute;
                 relMap.put("fieldName", NamingConventionService.toFieldName(pluralName));
                 
                 // Mapped by inverse property name
-                String inverseFk = targetSingular(tableSchema.name()) + "_id";
+                String sourceCleanTableName = domainNamesMap.getOrDefault(tableSchema.name(), tableSchema.name());
+                String inverseFk = targetSingular(sourceCleanTableName) + "_id";
                 relMap.put("mappedByFieldName", NamingConventionService.toRelationshipFieldName(inverseFk));
                 relationshipsList.add(relMap);
             }

@@ -1,5 +1,6 @@
 package com.apiforge.application.service;
 
+import com.apiforge.domain.model.EnrichedSchema;
 import com.apiforge.domain.model.GenerationOptions;
 import com.apiforge.domain.model.ParsedSchema;
 import org.junit.jupiter.api.Test;
@@ -33,7 +34,7 @@ class CodeGenerationServiceIT {
         ParsedSchema schema = SqlSchemaParser.parse(sql);
         GenerationOptions options = new GenerationOptions("com.example.simpleapp", false, false, false);
 
-        Map<String, String> files = service.generate(schema, options);
+        Map<String, String> files = service.generate(new EnrichedSchema(schema, List.of(), Map.of(), Map.of()), options);
 
         // Verify basic structures are generated
         assertNotNull(files);
@@ -72,7 +73,7 @@ class CodeGenerationServiceIT {
         ParsedSchema schema = SqlSchemaParser.parse(sql);
         GenerationOptions options = new GenerationOptions("com.example.relationalapp", false, false, false);
 
-        Map<String, String> files = service.generate(schema, options);
+        Map<String, String> files = service.generate(new EnrichedSchema(schema, List.of(), Map.of(), Map.of()), options);
 
         // Verify relational components are generated
         assertTrue(files.containsKey("src/main/java/com/example/relationalapp/domain/entity/Users.java"));
@@ -97,7 +98,7 @@ class CodeGenerationServiceIT {
         // Options with JWT and Pagination enabled
         GenerationOptions options = new GenerationOptions("com.example.securedapp", true, true, false);
 
-        Map<String, String> files = service.generate(schema, options);
+        Map<String, String> files = service.generate(new EnrichedSchema(schema, List.of(), Map.of(), Map.of()), options);
 
         // Verify pom.xml includes conditional spring-boot-starter-security
         String pomContent = files.get("pom.xml");

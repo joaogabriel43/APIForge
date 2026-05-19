@@ -6,6 +6,7 @@ import com.apiforge.domain.model.RelationshipDefinition;
 import com.apiforge.domain.model.TableSchema;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.condition.EnabledIf;
 import org.testcontainers.containers.PostgreSQLContainer;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
@@ -27,7 +28,16 @@ import static org.junit.jupiter.api.Assertions.*;
  * </p>
  */
 @Testcontainers
+@EnabledIf("isDockerOnline")
 class SqlSchemaParserIntegrationTest {
+
+    private static boolean isDockerOnline() {
+        try {
+            return org.testcontainers.DockerClientFactory.instance().isDockerAvailable();
+        } catch (Exception e) {
+            return false;
+        }
+    }
 
     // Efficient Testcontainers lifecycle: Static container starts exactly once for all tests in this class
     @Container

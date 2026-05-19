@@ -2,7 +2,9 @@ package com.apiforge.presentation.controller;
 
 import com.apiforge.application.service.CodeGenerationService;
 import com.apiforge.application.service.GenerationAuditService;
+import com.apiforge.application.service.SchemaEnrichmentService;
 import com.apiforge.application.service.SqlSchemaParser;
+import com.apiforge.domain.model.EnrichedSchema;
 import com.apiforge.domain.model.GenerationOptions;
 import com.apiforge.presentation.exception.GlobalExceptionHandler;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -15,10 +17,12 @@ import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 
+import java.util.List;
 import java.util.Map;
 
 import static org.hamcrest.Matchers.*;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.Mockito.*;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.asyncDispatch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -30,6 +34,9 @@ class GenerationControllerSseTest {
 
     @Mock
     private SqlSchemaParser sqlSchemaParser;
+
+    @Mock
+    private SchemaEnrichmentService schemaEnrichmentService;
 
     @Mock
     private CodeGenerationService codeGenerationService;
@@ -44,8 +51,14 @@ class GenerationControllerSseTest {
     @BeforeEach
     void setUp() {
         MockitoAnnotations.openMocks(this);
+
+        // Setup default transparent enrichment mock behavior
+        when(schemaEnrichmentService.enrich(any(), anyBoolean()))
+                .thenAnswer(invocation -> new EnrichedSchema(invocation.getArgument(0), List.of(), Map.of(), Map.of()));
+
         this.generationController = new GenerationController(
                 sqlSchemaParser,
+                schemaEnrichmentService,
                 codeGenerationService,
                 null, // zipGeneratorService is not used in SSE preview
                 generationAuditService,
