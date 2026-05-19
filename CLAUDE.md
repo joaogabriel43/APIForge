@@ -69,6 +69,7 @@ com.apiforge/
 | **P6Spy Starter** | `1.9.1` | Interceptador JDBC para profiling de SQL queries em tempo de execução, vital para detectar problemas de performance como N+1. |
 | **jqwik** | `1.8.5` | Framework de Property-based Testing integrado ao JUnit 5 para validações matemáticas e de integridade dos DDLs analisados. |
 | **Flyway** | `3.2` parent | Ferramenta de versionamento e migração de banco de dados PostgreSQL estruturado e resiliente. |
+| **FreeMarker** | `2.3` parent starter | Motor de templates para renderização desacoplada do código-fonte das APIs geradas. |
 
 ---
 
@@ -97,6 +98,30 @@ com.apiforge/
 * **Contexto**: O interpretador de SQL de entrada lidará com variações infinitas de queries e layouts SQL. Testes unitários comuns podem deixar escapar casos extremos de sintaxe SQL.
 * **Decisão**: Adicionar `jqwik` para realizar testes baseados em propriedades gerando strings SQL arbitrárias para testar a robustez do parsing.
 * **Consequências**: Maior resiliência contra exceções e quebras de interpretador em produção.
+
+### ADR 005: Isolamento Estrito do Motor de Templates (FreeMarker)
+* **Status**: Aprovado
+* **Contexto**: A geração de código-fonte de múltiplos arquivos precisa ser limpa, flexível e totalmente desacoplada de concatenações manuais de strings ou regras Java acopladas.
+* **Decisão**: Utilizar exclusivamente templates FreeMarker (`.ftl`) físicos no diretório `src/main/resources/templates/` para definir a estrutura sintática, injetando metadados por modelos de dados contextuais simples.
+* **Consequências**: Código gerador limpo, modular, extensível e 100% livre de concatenações manuais de strings.
+
+### ADR 006: Validação de Código Gerado com Stubs Dinâmicos e JavaCompiler
+* **Status**: Aprovado
+* **Contexto**: Garantir a correção absoluta das APIs geradas exige compilação programática estrita em tempo de execução. Contudo, dependências como Lombok, MapStruct e Jakarta Validation não devem constar no escopo compile do gerador.
+* **Decisão**: Utilizar a Java Compiler API (`javax.tools.JavaCompiler`) rodando em diretórios temporários (`@TempDir`). Programar stubs leves para as anotações do Lombok, MapStruct e Jakarta no ambiente de testes, injetando construtores e accessores dinamicamente por preprocessamento AST para viabilizar compilação nativa pura sem vazamento de dependências.
+* **Consequências**: Garantia absoluta de código gerado livre de erros de sintaxe ou imports inválidos com zero poluição nas dependências de produção do gerador.
+
+### ADR 007: Pluralizador e Conversor de Nomenclatura Embutido (YAGNI)
+* **Status**: Aprovado
+* **Contexto**: A geração de rotas REST kebab-case plurais e nomes de classes/relacionamentos singulares PascalCase exige conversões de strings robustas sem introduzir dependências de NLP pesadas e desnecessárias.
+* **Decisão**: Implementar um utilitário nativo puro (`NamingConventionService`) baseado em regras heurísticas de sufixo e tabelas de mapeamento leves.
+* **Consequências**: Conversão rápida, previsível, testável e sem dependências externas adicionais.
+
+### ADR 008: Empacotamento ZIP em Memória Independente de Plataforma
+* **Status**: Aprovado
+* **Contexto**: O empacotamento do projeto padrão Spring/Maven gerado para download exige portabilidade entre sistemas operacionais (Windows/Linux) e conformidade YAGNI.
+* **Decisão**: Criar o `ZipGeneratorService` na infraestrutura utilizando a API nativa `java.util.zip.ZipOutputStream`, forçando normalização absoluta de barras (`/`) e stripping de caminhos iniciais.
+* **Consequências**: Compactação rápida em memória livre de falhas de corrupção ou caminhos de SO incorretos, totalmente preparada para futuras exposições REST ou CLI.
 
 ---
 
