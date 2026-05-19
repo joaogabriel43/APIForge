@@ -211,6 +211,7 @@ class GenerationControllerIT {
 
     @Test
     void shouldValidateReactiveSseStreamPipelineWithAwaitility() {
+        // SSE Real-time Stream Validation Scenario: consumes endpoints GET /api/v1/generate/preview
         // Scenario 5: Validate GET /api/v1/generate/preview
         String sql = "CREATE TABLE users (id UUID PRIMARY KEY, bio TEXT);";
         String encodedSql = URLEncoder.encode(sql, StandardCharsets.UTF_8);
