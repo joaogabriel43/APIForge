@@ -1,8 +1,11 @@
 import { Component } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { HttpClient } from '@angular/common/http';
 import { MonacoEditorModule } from 'ngx-monaco-editor-v2';
+import { Subscription } from 'rxjs';
+import { GenerationApiService } from './core/services/generation-api.service';
+import { SseGenerationService } from './core/services/sse-generation.service';
+import { GenerationOptions } from './core/models/generation-options.model';
 
 interface GeneratedFile {
   name: string;
@@ -48,6 +51,7 @@ CREATE TABLE posts (
   files: GeneratedFile[] = [];
   selectedFile: GeneratedFile | null = null;
   selectedFileContent = '';
+  private previewSubs: Subscription[] = [];
 
   // Monaco Editor Options
   sqlEditorOptions = {
@@ -69,7 +73,10 @@ CREATE TABLE posts (
     padding: { top: 10 }
   };
 
-  constructor(private http: HttpClient) {}
+  constructor(
+    private generationApiService: GenerationApiService,
+    private sseGenerationService: SseGenerationService
+  ) {}
 
   // Run live SSE preview generation
   runLivePreview(): void {
@@ -78,77 +85,66 @@ CREATE TABLE posts (
       return;
     }
 
+    // Clear any previous active subscriptions to protect memory
+    this.previewSubs.forEach(s => s.unsubscribe());
+    this.previewSubs = [];
+
     this.isGenerating = true;
     this.generationError = '';
     this.logs = ['Initiating real-time preview pipeline...'];
     this.files = [];
     this.selectedFile = null;
+    this.selectedFileContent = '';
 
-    const params = new URLSearchParams({
+    const options: GenerationOptions = {
       sql: this.sqlCode,
       packageName: this.packageName,
-      generateJwt: String(this.generateJwt),
-      generatePagination: String(this.generatePagination),
-      generateSoftDelete: String(this.generateSoftDelete),
-      enrichWithLlm: String(this.enrichWithLlm)
-    });
-
-    const sseUrl = `/api/v1/generate/preview?${params.toString()}`;
-    const eventSource = new EventSource(sseUrl);
-
-    eventSource.onmessage = (event) => {
-      try {
-        const data = JSON.parse(event.data);
-        if (data.type === 'parsing') {
-          this.logs.push(`[Parser] ${data.message}`);
-        } else if (data.type === 'generating') {
-          this.logs.push(`[Generator] Rendered ${data.filePath}`);
-          
-          // Add or update file in list
-          const existingIdx = this.files.findIndex(f => f.name === data.filePath);
-          const updatedFile = { name: data.filePath, content: data.content };
-          if (existingIdx !== -1) {
-            this.files[existingIdx] = updatedFile;
-          } else {
-            this.files.push(updatedFile);
-          }
-
-          // Auto-select first generated file
-          if (!this.selectedFile) {
-            this.selectFile(updatedFile);
-          } else if (this.selectedFile.name === data.filePath) {
-            this.selectFile(updatedFile);
-          }
-        }
-      } catch (err) {
-        // Fallback for non-JSON lines or done events
-        if (event.data === 'done' || event.data.includes('complete')) {
-          this.logs.push('[Pipeline] Generation finished successfully.');
-          eventSource.close();
-          this.isGenerating = false;
-        } else {
-          this.logs.push(`[Info] ${event.data}`);
-        }
-      }
+      generateJwt: this.generateJwt,
+      generatePagination: this.generatePagination,
+      generateSoftDelete: this.generateSoftDelete,
+      enrichWithLlm: this.enrichWithLlm
     };
 
-    eventSource.addEventListener('done', () => {
-      this.logs.push('[Pipeline] Live generation completed successfully.');
-      eventSource.close();
-      this.isGenerating = false;
+    // Subscriptions setup
+    const progressSub = this.sseGenerationService.progress$.subscribe(data => {
+      this.logs.push(`[Parser] ${data.message}`);
     });
 
-    eventSource.onerror = (err) => {
-      console.error('SSE Error:', err);
-      // Wait a frame or check if already closed
-      if (eventSource.readyState === EventSource.CLOSED) {
-        return;
+    const fileSub = this.sseGenerationService.file$.subscribe(data => {
+      this.logs.push(`[Generator] Rendered ${data.path}`);
+      
+      const updatedFile = { name: data.path, content: data.content };
+      const existingIdx = this.files.findIndex(f => f.name === data.path);
+      if (existingIdx !== -1) {
+        this.files[existingIdx] = updatedFile;
+      } else {
+        this.files.push(updatedFile);
       }
-      this.logs.push('[Error] Connection interrupted or pipeline failed.');
-      this.generationError = 'An error occurred during real-time generation.';
-      eventSource.close();
+
+      if (!this.selectedFile) {
+        this.selectFile(updatedFile);
+      } else if (this.selectedFile.name === data.path) {
+        this.selectFile(updatedFile);
+      }
+    });
+
+    const completeSub = this.sseGenerationService.complete$.subscribe(data => {
+      this.logs.push(`[Success] ${data.message} (${data.fileCount} files created)`);
       this.isGenerating = false;
-    };
+      this.previewSubs.forEach(s => s.unsubscribe());
+    });
+
+    const errorSub = this.sseGenerationService.error$.subscribe(data => {
+      this.logs.push(`[Error] ${data.message}`);
+      this.generationError = data.message;
+      this.isGenerating = false;
+      this.previewSubs.forEach(s => s.unsubscribe());
+    });
+
+    this.previewSubs.push(progressSub, fileSub, completeSub, errorSub);
+
+    // Trigger connection
+    this.sseGenerationService.connect(options);
   }
 
   // Download ZIP output
@@ -162,7 +158,7 @@ CREATE TABLE posts (
     this.generationError = '';
     this.logs = ['Packaging project source code ZIP...'];
 
-    const payload = {
+    const options: GenerationOptions = {
       sql: this.sqlCode,
       packageName: this.packageName,
       generateJwt: this.generateJwt,
@@ -171,15 +167,9 @@ CREATE TABLE posts (
       enrichWithLlm: this.enrichWithLlm
     };
 
-    this.http.post('/api/v1/generate', payload, { responseType: 'blob' }).subscribe({
-      next: (blob) => {
+    this.generationApiService.downloadProject(options).subscribe({
+      next: () => {
         this.logs.push('[Success] Download initiated.');
-        const url = window.URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = `${this.packageName.split('.').pop() || 'apiforge'}-project.zip`;
-        a.click();
-        window.URL.revokeObjectURL(url);
         this.isGenerating = false;
       },
       error: (err) => {
