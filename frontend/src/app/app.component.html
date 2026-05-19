@@ -1,0 +1,211 @@
+<div class="min-h-screen bg-slate-950 text-slate-100 flex flex-col font-sans selection:bg-cyan-500/30">
+  
+  <!-- Glowing header -->
+  <header class="border-b border-slate-800 bg-slate-900/60 backdrop-blur-md sticky top-0 z-50">
+    <div class="max-w-7-xl mx-auto px-6 py-4 flex items-center justify-between">
+      <div class="flex items-center space-x-3">
+        <div class="h-10 w-10 rounded-xl bg-gradient-to-tr from-cyan-500 to-indigo-600 flex items-center justify-center shadow-lg shadow-cyan-500/20">
+          <svg class="h-6 w-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z" />
+          </svg>
+        </div>
+        <div>
+          <h1 class="text-xl font-bold tracking-tight bg-gradient-to-r from-white via-slate-200 to-slate-400 bg-clip-text text-transparent">APIForge Playground</h1>
+          <p class="text-xs text-cyan-400 font-medium tracking-wide">SPRINT 05 — REAL-TIME COMPILATION ENGINE</p>
+        </div>
+      </div>
+      <div class="flex items-center space-x-4">
+        <span class="text-xs bg-slate-800 px-3 py-1.5 rounded-full border border-slate-700 font-mono text-slate-300">
+          Spring Boot &#64; localhost:8080
+        </span>
+        <span class="h-2.5 w-2.5 rounded-full bg-emerald-500 animate-pulse" title="Connected"></span>
+      </div>
+    </div>
+  </header>
+
+  <!-- Content Workspace -->
+  <main class="flex-1 max-w-[1600px] w-full mx-auto p-6 grid grid-cols-1 lg:grid-cols-12 gap-6">
+    
+    <!-- Left Column: Input Panel -->
+    <div class="lg:col-span-5 flex flex-col space-y-6">
+      
+      <!-- SQL Schema Card -->
+      <div class="bg-slate-900/40 border border-slate-800 rounded-2xl p-5 flex flex-col space-y-4 shadow-xl backdrop-blur-sm relative overflow-hidden group">
+        <div class="absolute top-0 left-0 right-0 h-[2px] bg-gradient-to-r from-transparent via-cyan-500 to-transparent opacity-50"></div>
+        <div class="flex items-center justify-between">
+          <div class="flex items-center space-x-2">
+            <span class="h-2 w-2 rounded-full bg-cyan-500"></span>
+            <h2 class="text-sm font-semibold tracking-wide uppercase text-slate-300">SQL Input Schema</h2>
+          </div>
+          <span class="text-xs text-slate-500 font-mono">PostgreSQL Dialect</span>
+        </div>
+        <div class="h-[320px] rounded-xl border border-slate-800 overflow-hidden bg-slate-950/60 focus-within:border-cyan-500/50 transition">
+          <ngx-monaco-editor class="h-full w-full" [options]="sqlEditorOptions" [(ngModel)]="sqlCode"></ngx-monaco-editor>
+        </div>
+      </div>
+
+      <!-- Config & Generator Panel -->
+      <div class="bg-slate-900/40 border border-slate-800 rounded-2xl p-5 flex flex-col space-y-5 shadow-xl backdrop-blur-sm relative">
+        
+        <h2 class="text-sm font-semibold tracking-wide uppercase text-slate-300 flex items-center space-x-2">
+          <span class="h-2 w-2 rounded-full bg-indigo-500"></span>
+          <span>Generation options</span>
+        </h2>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <!-- Package name -->
+          <div class="md:col-span-2 flex flex-col space-y-1.5">
+            <label class="text-xs text-slate-400 font-medium">Base Package Structure</label>
+            <input type="text" [(ngModel)]="packageName" 
+                   class="bg-slate-950/60 border border-slate-800 rounded-xl px-4 py-2.5 text-sm text-slate-200 focus:outline-none focus:border-cyan-500/50 transition font-mono" 
+                   placeholder="e.g. com.mycompany.api">
+          </div>
+
+          <!-- Boolean toggles -->
+          <div class="space-y-3 md:col-span-2 grid grid-cols-2 gap-x-4 gap-y-3">
+            <label class="flex items-center space-x-3 cursor-pointer group text-slate-300 select-none">
+              <input type="checkbox" [(ngModel)]="generateJwt" class="rounded border-slate-700 bg-slate-950 text-cyan-600 focus:ring-cyan-500/40">
+              <span class="text-sm group-hover:text-white transition">Spring Security JWT</span>
+            </label>
+            
+            <label class="flex items-center space-x-3 cursor-pointer group text-slate-300 select-none">
+              <input type="checkbox" [(ngModel)]="generatePagination" class="rounded border-slate-700 bg-slate-950 text-cyan-600 focus:ring-cyan-500/40">
+              <span class="text-sm group-hover:text-white transition">Spring Data Pagination</span>
+            </label>
+            
+            <label class="flex items-center space-x-3 cursor-pointer group text-slate-300 select-none">
+              <input type="checkbox" [(ngModel)]="generateSoftDelete" class="rounded border-slate-700 bg-slate-950 text-cyan-600 focus:ring-cyan-500/40">
+              <span class="text-sm group-hover:text-white transition">Hibernate Soft Delete</span>
+            </label>
+            
+            <label class="flex items-center space-x-3 cursor-pointer group text-slate-300 select-none">
+              <input type="checkbox" [(ngModel)]="enrichWithLlm" class="rounded border-slate-700 bg-slate-950 text-cyan-600 focus:ring-cyan-500/40">
+              <span class="text-sm text-cyan-400 group-hover:text-cyan-300 transition flex items-center space-x-1 font-semibold">
+                <span>AI Enhancement</span>
+                <span class="text-[9px] bg-cyan-950 text-cyan-400 border border-cyan-800/60 px-1 rounded">BETA</span>
+              </span>
+            </label>
+          </div>
+        </div>
+
+        <!-- Action triggers -->
+        <div class="grid grid-cols-2 gap-4 pt-2">
+          <button (click)="runLivePreview()" [disabled]="isGenerating"
+                  class="bg-gradient-to-r from-slate-800 to-slate-900 border border-slate-700/80 hover:border-cyan-500/50 hover:text-cyan-300 font-medium py-3 px-4 rounded-xl text-sm flex items-center justify-center space-x-2 transition shadow-lg disabled:opacity-50 select-none">
+            <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+            </svg>
+            <span>Live Preview (SSE)</span>
+          </button>
+
+          <button (click)="downloadZip()" [disabled]="isGenerating"
+                  class="bg-gradient-to-r from-cyan-500 to-indigo-600 text-white font-medium py-3 px-4 rounded-xl text-sm flex items-center justify-center space-x-2 transition shadow-lg shadow-cyan-500/10 hover:shadow-cyan-500/20 hover:brightness-110 active:scale-95 disabled:opacity-50 select-none">
+            <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+            </svg>
+            <span>Download ZIP</span>
+          </button>
+        </div>
+
+        <!-- Error panel -->
+        @if (generationError) {
+          <div class="p-3 bg-rose-950/40 border border-rose-800/50 rounded-xl flex items-start space-x-2 text-rose-400 text-xs">
+            <svg class="h-4 w-4 shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+            <span>{{ generationError }}</span>
+          </div>
+        }
+      </div>
+      
+      <!-- Logs Console Card -->
+      <div class="bg-slate-900/40 border border-slate-800 rounded-2xl p-5 flex flex-col space-y-3 shadow-xl backdrop-blur-sm flex-1 min-h-[160px]">
+        <div class="flex items-center justify-between">
+          <h2 class="text-xs font-semibold tracking-wide uppercase text-slate-400 flex items-center space-x-2">
+            <span class="h-1.5 w-1.5 rounded-full bg-cyan-400"></span>
+            <span>Real-time pipeline logs</span>
+          </h2>
+          <span class="text-[10px] text-slate-500 font-mono">Stream Active</span>
+        </div>
+        <div class="flex-1 bg-slate-950/80 border border-slate-900 rounded-xl p-4 font-mono text-xs text-slate-300 overflow-y-auto space-y-1.5 min-h-[120px] max-h-[220px]">
+          @if (logs.length === 0) {
+            <div class="text-slate-600 italic">No operations executed yet. Click preview or download to initiate.</div>
+          }
+          @for (log of logs; track log) {
+            <div [class.text-emerald-400]="log.includes('[Success]')" [class.text-cyan-400]="log.includes('[Parser]')" [class.text-indigo-400]="log.includes('[Generator]')" [class.text-rose-400]="log.includes('[Error]')" class="leading-relaxed">
+              {{ log }}
+            </div>
+          }
+        </div>
+      </div>
+
+    </div>
+
+    <!-- Right Column: Output Panel & Monaco Preview -->
+    <div class="lg:col-span-7 flex flex-col">
+      <div class="bg-slate-900/40 border border-slate-800 rounded-2xl p-5 flex flex-col h-full shadow-xl backdrop-blur-sm min-h-[500px]">
+        
+        <!-- Tab Explorers Header -->
+        <div class="border-b border-slate-800 pb-3 flex items-center justify-between mb-4">
+          <div class="flex items-center space-x-2">
+            <span class="h-2 w-2 rounded-full bg-emerald-500"></span>
+            <h2 class="text-sm font-semibold tracking-wide uppercase text-slate-300">Generated Project Files</h2>
+          </div>
+          <span class="text-xs text-slate-500 font-mono">{{ files.length }} Files Available</span>
+        </div>
+
+        <!-- Render when files exist -->
+        @if (files.length > 0) {
+          <div class="flex-1 flex flex-col space-y-4">
+            
+            <!-- File Explorer Horizontal Tabs -->
+            <div class="flex items-center space-x-2 overflow-x-auto pb-2 scrollbar-thin scrollbar-thumb-slate-800 scrollbar-track-transparent">
+              @for (file of files; track file.name) {
+                <button (click)="selectFile(file)"
+                        [ngClass]="{
+                          'border-cyan-500 bg-slate-800/80 text-cyan-400': isFileSelected(file),
+                          'border-transparent text-slate-400 hover:text-slate-200 hover:bg-slate-800/40': !isFileSelected(file)
+                        }"
+                        class="border-b-2 px-3 py-2 text-xs font-mono rounded-t-lg bg-slate-950/40 transition shrink-0 flex items-center space-x-1.5 select-none">
+                  <svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
+                  </svg>
+                  <span>{{ getFileName(file.name) }}</span>
+                </button>
+              }
+            </div>
+
+            <!-- Code Preview Workspace -->
+            <div class="flex-1 rounded-xl border border-slate-800 overflow-hidden bg-slate-950/60 flex flex-col relative group">
+              
+              <!-- File info header -->
+              <div class="bg-slate-950/80 border-b border-slate-850 px-4 py-2 flex items-center justify-between text-xs text-slate-500 font-mono">
+                <span>{{ selectedFile ? selectedFile.name : '' }}</span>
+                <span class="text-cyan-500">Read-Only View</span>
+              </div>
+
+              <!-- Preview Monaco Component -->
+              <div class="flex-1 w-full min-h-[460px] h-[550px]">
+                <ngx-monaco-editor class="h-full w-full" [options]="javaEditorOptions" [(ngModel)]="selectedFileContent"></ngx-monaco-editor>
+              </div>
+            </div>
+
+          </div>
+        } @else {
+          <div class="flex-1 flex flex-col items-center justify-center text-center p-8">
+            <div class="h-16 w-16 rounded-2xl bg-slate-900/60 border border-slate-800 flex items-center justify-center text-slate-600 mb-4 animate-pulse">
+              <svg class="h-8 w-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 9l3 3-3 3m5 0h3M5 20h14a2 2 0 002-2V6a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+              </svg>
+            </div>
+            <h3 class="text-slate-300 font-semibold mb-1">Source Code Output</h3>
+            <p class="text-xs text-slate-500 max-w-sm">No files compiled yet. Configure your schema and options on the left, then click <strong>Live Preview</strong> to see the generator compile in real-time.</p>
+          </div>
+        }
+
+      </div>
+    </div>
+
+  </main>
+</div>
